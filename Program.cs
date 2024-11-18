@@ -1,5 +1,7 @@
 
+using CrudOperations.Data;
 using CrudOperations.Models;
+using CrudOperations.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Build.Execution;
@@ -18,21 +20,17 @@ namespace CrudOperations
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
-
-            // Add services to the container.
-
             builder.Services.AddControllers();
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
 
             var securityScheme = new OpenApiSecurityScheme()
             {
-                Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+                Description = "JWT Authorization header",
                 Name = "Authorization",
                 In = ParameterLocation.Header,
                 Type = SecuritySchemeType.Http,
                 Scheme = "bearer",
-                BearerFormat = "JWT" // Optional
+                BearerFormat = "JWT"
             };
 
             var securityRequirement = new OpenApiSecurityRequirement
@@ -85,7 +83,9 @@ namespace CrudOperations
             });
 
             builder.Services.AddAuthorization();
-
+            builder.Services.AddScoped<UserService>();
+            builder.Services.AddScoped<ProductService>();
+            builder.Services.AddScoped<AuditLogService>();
             var app = builder.Build();
             app.UseAuthentication();
             app.UseSwagger();

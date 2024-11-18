@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using CrudOperations.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -24,10 +25,10 @@ namespace CrudOperations.Controllers
         }
         [HttpPost]
         [Route("login")]
-        public async Task<IActionResult> Login([FromBody] LoginModel model)
+        public IActionResult Login([FromBody] LoginModel model)
         {
-           //Logic to validate user
-            var user=_context.users.Where(x=>x.UserName==model.Username && x.Password==model.Password).FirstOrDefault();
+            //Logic to validate user
+            var user = _context.users.Where(x => x.UserName == model.Username && x.Password == model.Password).FirstOrDefault();
             if (user != null)
             {
                 var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]));
@@ -35,8 +36,7 @@ namespace CrudOperations.Controllers
                 var token = new JwtSecurityToken(
                     issuer: _configuration["JWT:ValidIssuer"],
                     audience: _configuration["JWT:ValidAudience"],
-                    expires: DateTime.Now.AddHours(3),
-                    //claims: authClaims,
+                    expires: DateTime.Now.AddHours(1),
                     signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
                     );
 

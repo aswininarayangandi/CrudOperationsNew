@@ -5,8 +5,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using CrudOperations;
 using CrudOperations.Models;
+using CrudOperations.Data;
 
 namespace CrudOperations.Controllers
 {
@@ -20,8 +20,6 @@ namespace CrudOperations.Controllers
         {
             _context = context;
         }
-
-        // GET: api/AuditLogs
         [HttpGet]
         public async Task<ActionResult<IEnumerable<AuditLog>>> GetauditLogs()
         {

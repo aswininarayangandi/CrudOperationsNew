@@ -5,9 +5,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using CrudOperations;
 using CrudOperations.Models;
 using Microsoft.AspNetCore.Authorization;
+using CrudOperations.Data;
+using CrudOperations.Services;
 
 namespace CrudOperations.Controllers
 {
@@ -16,114 +17,53 @@ namespace CrudOperations.Controllers
     [ApiController]
     public class UsersController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly UserService _userservice;
+        private readonly AuditLogService _auditlogservice;
 
-        public UsersController(AppDbContext context)
+        public UsersController(UserService userservice, AuditLogService auditlogservice)
         {
-            _context = context;
+            _userservice = userservice;
+            _auditlogservice = auditlogservice;
         }
-
-        // GET: api/Users
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<User>>> Getusers()
-        {
-            return await _context.users.ToListAsync();
-        }
+        public async Task<IActionResult> GetUsers() => Ok(await _userservice.GetAllUsersAsync());
 
-        // GET: api/Users/5
+
         [HttpGet("{id}")]
-        public async Task<ActionResult<User>> GetUser(int id)
+        public async Task<IActionResult> GetUser(int id) => Ok(await _userservice.GetUserByIdAsync(id));
+
+        [HttpPost]
+        public async Task<IActionResult> AddUser(User user)
         {
-            var user = await _context.users.FindAsync(id);
-
-            if (user == null)
-            {
-                return NotFound();
-            }
-
-            return user;
+            await _userservice.AddUserAsync(user);
+            await _auditlogservice.LogActionAsync(user.UserName, "Created", "User created");
+            return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
         }
 
-        // PUT: api/Users/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutUser(int id, User user)
+        public async Task<IActionResult> UpdateUser(int id, User user)
         {
-            if (id != user.Id)
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(user).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-                await LogAudit(user.UserName, "Updated User");
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!UserExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
+            if (id != user.Id) return BadRequest();
+            await _userservice.UpdateUserAsync(user);
+            await _auditlogservice.LogActionAsync(user.UserName, "Updated", "User updated");
             return NoContent();
         }
-
-        // POST: api/Users
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<User>> PostUser(User user)
-        {
-            _context.users.Add(user);
-            await _context.SaveChangesAsync();
-            await LogAudit(user.UserName, "Created User");
-
-            return CreatedAtAction("GetUser", new { id = user.Id }, user);
-        }
-
-        // DELETE: api/Users/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(int id)
         {
-            var user = await _context.users.FindAsync(id);
-            if (user == null)
+            var user = await _userservice.GetUserByIdAsync(id);
+            if (user != null)
             {
-                return NotFound();
+                //No Delete provision for Admin Users
+                if (user.Role == "Admin")
+                {
+                    return BadRequest("No delete option for Admin users");
+                }
+                else
+                    await _userservice.DeleteUserAsync(id);
+                await _auditlogservice.LogActionAsync(user.UserName, "Deleted", "User Deleted");
             }
-            //No Delete provision for Admin Users
-            if(user.Role=="Admin")
-            {
-                return BadRequest("No delete option for Admin users");
-            }
-
-            _context.users.Remove(user);
-            await _context.SaveChangesAsync();
-            await LogAudit(user.UserName, "Deleted User");
-
             return NoContent();
-        }
-
-        private bool UserExists(int id)
-        {
-            return _context.users.Any(e => e.Id == id);
-        }
-        [ApiExplorerSettings(IgnoreApi = true)]
-        public async Task LogAudit(string userName, string action)
-        {
-            _context.auditLogs.Add(new AuditLog
-            {
-                UserName = userName,
-                Action = action,
-                TimeStamp = DateTime.Now
-            });
-            await _context.SaveChangesAsync();
         }
     }
 }
